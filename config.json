@@ -1,0 +1,8 @@
+{
+  "use_physical_bell": false,
+  "physical_bell_port_type": "COM",
+  "physical_bell_port_name": "COM1",
+  "physical_bell_baud_rate": 9600,
+  "physical_bell_signal_duration_ms": 200,
+  "physical_bell_pause_duration_ms": 500
+}
