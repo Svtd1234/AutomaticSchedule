@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Lesson Scheduler</title>
+
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    />
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/css/bootstrap.min.css"
+    />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap"
+        rel="stylesheet"
+    />
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <style>
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(to bottom, #2c3e50, #4ca1af);
+            color: #eee;
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+        .container-main {
+            margin-top: 40px;
+            width: 90%;
+            max-width: 1100px;
+            padding: 20px;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.2); /* трішки щільніше тло */
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
+            padding: 20px;
+            color: #fff;
+        }
+        .title-text {
+            text-align: center;
+            margin-bottom: 20px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+
+        .btn-custom {
+            border: none;
+            border-radius: 25px;
+            padding: 10px 20px;
+            color: #eee;
+            margin-right: 5px;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+        .btn-custom:hover {
+            background-color: #f39c12;
+            transform: scale(1.05);
+        }
+        /* Базові кольори для різних .btn-... */
+        .btn-secondary,
+        .btn-warning,
+        .btn-success,
+        .btn-info,
+        .btn-primary,
+        .btn-danger {
+            background-color: #6c757d;
+            border-color: #6c757d;
+        }
+
+
+        .form-select,
+        input.form-control {
+            background: rgba(0, 0, 0, 0.3);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            transition: background 0.3s ease;
+            box-shadow: none; /* Забираємо підсвітки Bootstrap */
+        }
+        .form-select:focus,
+        input.form-control:focus {
+            background: rgba(0, 0, 0, 0.5);
+            outline: none;
+            box-shadow: none; /* Прибираємо "блакитне сяйво" */
+        }
+
+
+        .table {
+            background: rgba(0, 0, 0, 0.15); /* менш прозора */
+            color: #fff;
+            margin-bottom: 0;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .table thead {
+            background-color: rgba(0, 0, 0, 0.3);
+        }
+        .action-cell {
+            text-align: center;
+        }
+        .header-input {
+            width: 90%;
+            background: transparent;
+            color: #fff;
+            border: none;
+            text-align: center;
+            outline: none;
+        }
+        .header-input:focus {
+            outline: 2px solid #f39c12;
+        }
+
+
+        #timer {
+            font-size: 1.8rem;
+            font-weight: bold;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        #logoutBtn {
+            display: none;
+        }
+
+
+        #importPreviewModal, #emailModal {
+            display: none; /* Спочатку приховано */
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+            pointer-events: auto;
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            display: flex;
+        }
+
+        #importPreviewModal-content, #emailModal-content {
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #666;
+            width: 80%;
+            max-width: 700px; /* Зменшено для emailModal */
+            border-radius: 10px;
+            background-color: #333;
+            color: #eee;
+        }
+
+
+        #importPreviewArea {
+            margin-bottom: 20px;
+            border-radius: 10px;
+            overflow-x: auto;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        #importPreviewTable {
+            background: rgba(0, 0, 0, 0.15);
+            color: #fff;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 10px;
+        }
+        #importPreviewTable th, #importPreviewTable td {
+            padding: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+        }
+        #importPreviewTable thead {
+            background-color: rgba(0, 0, 0, 0.3);
+        }
+        .import-controls {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .import-controls button {
+            margin: 0 10px;
+        }
+
+
+        #emailModal-body {
+            color: #eee;
+        }
+        #emailModal textarea,
+        #emailModal input[type="text"],
+        #emailModal input[type="email"],
+        #emailModal input[type="password"],
+        #emailModal input[type="number"] { /* Додано тип number для порту */
+            background-color: #555;
+            color: #eee;
+            border: 1px solid #888;
+            border-radius: 8px;
+            transition: background 0.3s ease;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.6);
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        #emailModal textarea:focus,
+        #emailModal input[type="text"]:focus,
+        #emailModal input[type="email"]:focus,
+        #emailModal input[type="password"]:focus,
+        #emailModal input[type="number"]:focus { /* Додано тип number для порту */
+            background-color: #777;
+            outline: none;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.8);
+        }
+
+    </style>
+</head>
+<body>
+
+    <script type="text/javascript" src="/eel.js"></script>
+
+    <div class="container-main">
+        <div class="glass-card">
+            <div class="d-flex flex-wrap justify-content-center align-items-center mb-4 gap-4">
+                <div class="d-flex align-items-center">
+                    <label for="profileSelect" class="me-2">Профіль:</label>
+                    <select id="profileSelect" class="form-select form-select-sm" style="width:auto;">
+                        <option value="1">Звичайний</option>
+                        <option value="2">Скорочений</option>
+                        </select>
+                </div>
+
+                <div class="d-flex align-items-center">
+                    <select id="select_oblast" class="form-select form-select-sm me-2" style="width:auto;">
+                        <option value="29">Автономна Республіка Крим</option>
+                        <option value="8">Волинська область</option>
+                        <option value="4">Вінницька область</option>
+                        <option value="9">Дніпропетровська область</option>
+                        <option value="28">Донецька область</option>
+                        <option value="10">Житомирська область</option>
+                        <option value="11">Закарпатська область</option>
+                        <option value="12">Запорізька область</option>
+                        <option value="13">Івано-Франківська область</option>
+                        <option value="31">м. Київ</option>
+                        <option value="14">Київська область</option>
+                        <option value="15">Кіровоградська область</option>
+                        <option value="16">Луганська область</option>
+                        <option value="27">Львівська область</option>
+                        <option value="17">Миколаївська область</option>
+                        <option value="18">Одеська область</option>
+                        <option value="19">Полтавська область</option>
+                        <option value="5">Рівненська область</option>
+                        <option value="30">м. Севастополь</option>
+                        <option value="20">Сумська область</option>
+                        <option value="21">Тернопільська область</option>
+                        <option value="22">Харківська область</option>
+                        <option value="23">Херсонська область</option>
+                        <option value="3">Хмельницька область</option>
+                        <option value="24">Черкаська область</option>
+                        <option value="26">Чернівецька область</option>
+                        <option value="25">Чернігівська область</option>
+                    </select>
+                    <button onclick="sendSelection()" class="btn btn-primary btn-custom" style="margin-right:0;">
+                        Зберегти Область
+                    </button>
+                </div>
+            </div>
+
+            <div class="d-flex flex-wrap justify-content-center mb-4 gap-3">
+                <button id="addLessonBtn" class="btn btn-secondary btn-custom">
+                    <i class="fas fa-plus"></i> Додати Урок
+                </button>
+                <button id="clearAllLessonsBtn" class="btn btn-warning btn-custom">
+                    <i class="fas fa-trash-alt"></i> Очистити Все
+                </button>
+                <button id="saveScheduleBtn" class="btn btn-success btn-custom">
+                    <i class="fas fa-save"></i> Зберегти
+                </button>
+                <button id="importBtn" class="btn btn-info btn-custom">
+                    <i class="fas fa-upload"></i> Імпорт
+                </button>
+                <div class="btn-group">
+                    <button id="exportBtn" class="btn btn-primary btn-custom dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-download"></i> Експорт
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#" onclick="exportData('json')">JSON</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="exportData('txt')">TXT</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="exportData('xlsx')">Excel</a></li>
+                    </ul>
+                </div>
+                <button id="emailBtn" class="btn btn-primary btn-custom">
+                    <i class="fas fa-envelope"></i> Розсилка
+                </button>
+            </div>
+
+            <div id="importPreviewModal" style="display:none;">
+                <div id="importPreviewModal-content" class="glass-card" style="width:80%; max-width: 900px; margin: auto;">
+                    <div id="importPreviewArea">
+                        <p class="text-center"><strong>Попередній перегляд імпортованих даних</strong></p>
+                        <div class="table-responsive">
+                            <table class="table table-bordered align-middle" id="importPreviewTable">
+                                <thead>
+                                    <tr>
+                                        <th>Урок</th>
+                                        <th>1 ПАРА</th>
+                                        <th>ПЕРЕРВА</th>
+                                        <th>2 ПАРА</th>
+                                        <th>ПЕРЕРВА</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="previewTableBody">
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="import-controls">
+                            <button id="confirmImportBtn" class="btn btn-success btn-custom">Підтвердити Імпорт</button>
+                            <button id="cancelImportBtn" class="btn btn-danger btn-custom">Скасувати</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <div id="emailModal" style="display:none;">
+                <div id="emailModal-content" class="glass-card" style="width:80%; max-width: 700px; margin: auto;">
+                    <div id="emailModal-body">
+
+                        <div class="mb-3">
+                            <label for="senderEmail" class="form-label">Пошта відправника (адреса "Від"):</label>
+                            <input type="email" class="form-control" id="senderEmail" placeholder="Введіть пошту (напр., ваше ім'я@example.com)">
+                        </div>
+                         <div class="mb-3">
+                            <label for="smtpLogin" class="form-label">Логін SMTP сервера:</label>
+                            <input type="text" class="form-control" id="smtpLogin" placeholder="Введіть логін (зазвичай пошта відправника)">
+                        </div>
+                        <div class="mb-3">
+                            <label for="senderPassword" class="form-label">Пароль від пошти / Пароль додатка:</label>
+                            <input type="password" class="form-control" id="senderPassword" placeholder="Введіть пароль">
+                        </div>
+
+                        <div class="mb-3 row">
+                            <div class="col-md-8">
+                                <label for="smtpServer" class="form-label">SMTP сервер:</label>
+                                <input type="text" class="form-control" id="smtpServer" placeholder="Введіть SMTP сервер (напр., smtp.gmail.com)">
+                            </div>
+                             <div class="col-md-4">
+                                <label for="smtpPort" class="form-label">Порт:</label>
+                                <input type="number" class="form-control" id="smtpPort" placeholder="Порт (напр., 587)" value="587"> </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="emailRecipients" class="form-label">Одержувачі (адреси через кому):</label>
+                            <textarea class="form-control" id="emailRecipients" rows="3" placeholder="Введіть адреси електронної пошти"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="emailSubject" class="form-label">Тема повідомлення:</label>
+                            <input type="text" class="form-control" id="emailSubject" placeholder="Введіть тему">
+                        </div>
+                        <div class="mb-3">
+                            <label for="emailBody" class="form-label">Текст повідомлення:</label>
+                            <textarea class="form-control" id="emailBody" rows="5" placeholder="Введіть текст повідомлення"></textarea>
+                        </div>
+                        <div class="d-flex justify-content-center import-controls">
+                            <button id="sendEmailBtn" class="btn btn-success btn-custom me-2">Надіслати</button>
+                            <button id="cancelEmailBtn" class="btn btn-danger btn-custom">Скасувати</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <div class="table-responsive mb-3">
+                <table class="table table-bordered align-middle" id="profileTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 15%;">
+                                <input type="text" id="headerLesson" class="header-input" value="УРОК" />
+                            </th>
+                            <th style="width: 15%;">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <input type="text" id="headerPair1" class="header-input" value="1 ПАРА" />
+                                    <button class="btn btn-sm btn-info ms-1" onclick="loadColumnBell(1)">
+                                        <i class="fas fa-bell"></i>
+                                    </button>
+                                </div>
+                            </th>
+                            <th style="width: 15%;">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <input type="text" id="headerBreak1" class="header-input" value="ПЕРЕРВА" />
+                                    <button class="btn btn-sm btn-info ms-1" onclick="loadColumnBell(2)">
+                                        <i class="fas fa-bell"></i>
+                                    </button>
+                                </div>
+                            </th>
+                            <th style="width: 15%;">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <input type="text" id="headerPair2" class="header-input" value="2 ПАРА" />
+                                    <button class="btn btn-sm btn-info ms-1" onclick="loadColumnBell(3)">
+                                        <i class="fas fa-bell"></i>
+                                    </button>
+                                </div>
+                            </th>
+                            <th style="width: 15%;">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <input type="text" id="headerBreak2" class="header-input" value="ПЕРЕРВА" />
+                                    <button class="btn btn-sm btn-info ms-1" onclick="loadColumnBell(4)">
+                                        <i class="fas fa-bell"></i>
+                                    </button>
+                                </div>
+                            </th>
+                            <th style="width: 5%;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="lessonTable"></tbody>
+                </table>
+            </div>
+
+            <div id="timer"></div>
+
+        </div>
+    </div>
+
+    <script
+        src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/js/bootstrap.bundle.min.js"
+    ></script>
+
+    <script>
+      if (typeof eel !== 'undefined') {
+            eel.expose(reload_page);
+            function reload_page() {
+                console.log("JS: reload_page() -> Перезавантажуємо сторінку...");
+                location.reload();
+            }
+        }
+
+    const FLASK_PORT = 19780;
+    const FLASK_BASE_URL = `${window.location.protocol}//${window.location.hostname}:${FLASK_PORT}`;
+
+        let bellSoundsByColumn = [null, null, null, null, null];
+        let rungTimes = new Set();
+        let currentProfile = "1";
+
+        let postCounter = 0;
+
+        const bc = new BroadcastChannel('scheduleUpdateChannel');
+        bc.onmessage = (event) => {
+          if (event.data === 'updateSchedule') {
+            loadProfileData(currentProfile);
+          }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            startRealTimeClock();
+
+            currentProfile = document.getElementById("profileSelect").value;
+            loadProfileData(currentProfile);
+
+            document.getElementById('profileSelect').addEventListener('change', onProfileChange);
+            document.getElementById('addLessonBtn').addEventListener('click', addLessonRow);
+            document.getElementById('clearAllLessonsBtn').addEventListener('click', clearAllLessons);
+            document.getElementById('saveScheduleBtn').addEventListener('click', () => saveSchedule(false));
+            document.getElementById('importBtn').addEventListener('click', showImportPreview);
+            document.getElementById('exportBtn').addEventListener('click', function(event) {
+                if (!event.target.classList.contains('dropdown-toggle')) {
+                    exportData('json');
+                }
+            });
+            document.getElementById('confirmImportBtn').addEventListener('click', confirmImportData);
+            document.getElementById('cancelImportBtn').addEventListener('click', cancelImportPreview);
+            document.getElementById('emailBtn').addEventListener('click', openEmailModal);
+            document.getElementById('sendEmailBtn').addEventListener('click', sendEmail);
+            document.getElementById('cancelEmailBtn').addEventListener('click', closeEmailModal);
+
+
+            [
+                "headerLesson", "headerPair1", "headerBreak1",
+                "headerPair2", "headerBreak2"
+            ].forEach(id => {
+                document.getElementById(id).addEventListener('input', () => {
+                    saveSchedule(true);
+                });
+            });
+
+            setInterval(checkLessonTimes, 1000);
+        });
+
+
+    function onProfileChange() {
+      currentProfile = document.getElementById("profileSelect").value;
+      loadProfileData(currentProfile);
+    }
+
+    function loadProfileData(profile) {
+      document.getElementById('lessonTable').innerHTML = '';
+      rungTimes.clear();
+
+      $.ajax({
+        url: `${FLASK_BASE_URL}/api/schedule?profile=${profile}`,
+        type: "GET",
+        success: function(resp) {
+          const scheduleArr = resp.schedule || [];
+          const headers = resp.headers || {};
+
+          if (headers.lessonName)  document.getElementById("headerLesson").value = headers.lessonName;
+          if (headers.pair1)       document.getElementById("headerPair1").value = headers.pair1;
+          if (headers.break1)      document.getElementById("headerBreak1").value = headers.break1;
+          if (headers.pair2)       document.getElementById("headerPair2").value = headers.pair2;
+          if (headers.break2)      document.getElementById("headerBreak2").value = headers.break2;
+
+          const lessonTable = document.getElementById("lessonTable");
+          scheduleArr.forEach(rowData => {
+            const tr = lessonTable.insertRow();
+            tr.innerHTML = `
+              <td>
+                <input type="text" class="form-control" value="${rowData[0] || ''}" />
+              </td>
+              <td>
+                <input type="time" class="form-control time-input" value="${rowData[1] || ''}" />
+              </td>
+              <td>
+                <input type="time" class="form-control time-input" value="${rowData[2] || ''}" />
+              </td>
+              <td>
+                <input type="time" class="form-control time-input" value="${rowData[3] || ''}" />
+              </td>
+              <td>
+                <input type="time" class="form-control time-input" value="${rowData[4] || ''}" />
+              </td>
+              <td class="action-cell">
+                <button class="btn btn-danger" style="background-color: #dc3545; border-color: #dc3545;"
+                        onclick="deleteLessonRow(this)">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </td>
+            `;
+          });
+
+          attachInputEventsToAllRows();
+        },
+        error: function(err) {
+          console.error(`Помилка завантаження профілю ${profile}:`, err);
+        }
+      });
+    }
+
+    function saveSchedule(autoSave = false) {
+      const headers = {
+        lessonName: document.getElementById("headerLesson").value,
+        pair1:      document.getElementById("headerPair1").value,
+        break1:     document.getElementById("headerBreak1").value,
+        pair2:      document.getElementById("headerPair2").value,
+        break2:     document.getElementById("headerBreak2").value,
+      };
+
+      const lessonTable = document.getElementById("lessonTable");
+      const schedule = Array.from(lessonTable.rows).map(tr => {
+        const tds = Array.from(tr.cells).slice(0, 5);
+        return tds.map(td => td.children[0].value);
+      });
+
+      $.ajax({
+        url: `${FLASK_BASE_URL}/api/schedule?profile=${currentProfile}`,
+        type: "POST",
+        contentType: "application/json",
+        data: JSON.stringify({
+          schedule: schedule,
+          headers: headers
+        }),
+        success: function(response) {
+          if (!autoSave) {
+            console.log("Збережено успішно:", response);
+          }
+
+          postCounter++;
+          console.log(`POST-запитів: ${postCounter}`);
+
+          if (postCounter >= 4) {
+            console.log("Перезавантажуємо дані після 4 POST-запитів...");
+            loadProfileData(currentProfile);
+            postCounter = 0;
+          }
+
+          bc.postMessage('updateSchedule');
+        },
+        error: function(err) {
+          console.error("Помилка збереження:", err);
+        }
+      });
+    }
+
+        function addLessonRow() {
+            const lessonTable = document.getElementById("lessonTable");
+            const tr = lessonTable.insertRow();
+            tr.innerHTML = `
+                <td><input type="text" class="form-control" placeholder="Enter lesson name" /></td>
+                <td><input type="time" class="form-control time-input" /></td>
+                <td><input type="time" class="form-control time-input" /></td>
+                <td><input type="time" class="form-control time-input" /></td>
+                <td><input type="time" class="form-control time-input" /></td>
+                <td class="action-cell">
+                    <button class="btn btn-danger" style="background-color: #dc3545; border-color: #dc3545;"
+                            onclick="deleteLessonRow(this)">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            `;
+            attachInputEventsToRow(tr);
+            saveSchedule(true);
+        }
+
+        function deleteLessonRow(button) {
+            const row = button.closest('tr');
+            row.remove();
+            saveSchedule(true);
+        }
+
+        function clearAllLessons() {
+            document.getElementById("lessonTable").innerHTML = "";
+            saveSchedule(true);
+        }
+
+        function attachInputEventsToRow(row) {
+            const inputs = row.querySelectorAll('input');
+            inputs.forEach(inp => {
+                inp.addEventListener('input', () => saveSchedule(true));
+            });
+        }
+        function attachInputEventsToAllRows() {
+            const lessonTable = document.getElementById("lessonTable");
+            Array.from(lessonTable.rows).forEach(row => attachInputEventsToRow(row));
+        }
+
+        function startRealTimeClock() {
+            const timerElement = document.getElementById('timer');
+            setInterval(() => {
+                const now = new Date();
+                timerElement.textContent = now.toLocaleTimeString('en-GB', { hour12: false });
+            }, 1000);
+        }
+
+        function loadColumnBell(columnIndex) {
+            const inputEl = document.createElement('input');
+            inputEl.type = 'file';
+            inputEl.accept = 'audio/*';
+            inputEl.onchange = (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    bellSoundsByColumn[columnIndex] = new Audio(URL.createObjectURL(file));
+                    console.log(`Дзвінок для колонки ${columnIndex} завантажено`);
+                }
+            };
+            inputEl.click();
+        }
+
+         function checkLessonTimes() {
+            const now = new Date();
+            const currentTime = now.toLocaleTimeString('en-GB', { hour12: false }).substring(0, 5);
+
+            const lessonTable = document.getElementById('lessonTable');
+            Array.from(lessonTable.rows).forEach(row => {
+                for (let i = 1; i <= 4; i++) {
+                    const tdIndex = i;
+                    const timeInput = row.cells[tdIndex].querySelector('.time-input');
+                    if (timeInput && timeInput.value === currentTime) {
+                        const ringKey = `${currentTime}-col${i}`;
+                        if (!rungTimes.has(ringKey)) {
+                            rungTimes.add(ringKey);
+
+                            if (bellSoundsByColumn[i]) {
+                                console.log(`JS: Програвання користувацького звуку для колонки ${i} о ${currentTime}`);
+                                bellSoundsByColumn[i].currentTime = 0;
+                                bellSoundsByColumn[i].play();
+                            } else {
+                                console.log(`JS: Виклик фізичного дзвінка для колонки ${i} о ${currentTime} (немає користувацького звуку)`);
+                                if (typeof eel !== 'undefined' && eel.ring_physical_bell) {
+                                    eel.ring_physical_bell(i)();
+                                } else {
+                                    console.warn("JS: Eel не підключено або функція ring_physical_bell недоступна.");
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        function sendSelection() {
+            const selectElement = document.getElementById("select_oblast");
+            const selectedValue = selectElement.value;
+            if (typeof eel !== 'undefined' && eel.process_selection) {
+                eel.process_selection(selectedValue)(function(resp){
+                    console.log("Відповідь сервера на вибір області:", resp);
+                });
+            }
+        }
+
+        let importedDataForConfirmation = null;
+
+        function showImportPreview() {
+            const inputEl = document.createElement('input');
+            inputEl.type = 'file';
+            inputEl.accept = '.csv, .json, .xlsx';
+            inputEl.onchange = (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const content = e.target.result;
+                        if (file.name.endsWith('.csv')) {
+                            previewCSV(content);
+                        } else if (file.name.endsWith('.json')) {
+                            previewJSON(content);
+                        } else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+                            previewXLSXFile(file);
+                        }
+                    };
+                    reader.readAsBinaryString(file);
+                }
+            };
+            inputEl.click();
+        }
+
+        function previewCSV(csvData) {
+            const rows = csvData.split('\n').filter(row => row.trim() !== '');
+            const previewTableBody = document.getElementById('previewTableBody');
+            previewTableBody.innerHTML = '';
+
+            importedDataForConfirmation = [];
+
+            if (rows.length > 0 && rows[0].split(',').length >= 5) {
+                rows.forEach(row => {
+                    const columns = row.split(',');
+                    if (columns.length >= 5) {
+                        importedDataForConfirmation.push(columns);
+                        const tr = previewTableBody.insertRow();
+                        tr.innerHTML = `
+                            <td>${columns[0] || ''}</td>
+                            <td>${columns[1] || ''}</td>
+                            <td>${columns[2] || ''}</td>
+                            <td>${columns[3] || ''}</td>
+                            <td>${columns[4] || ''}</td>
+                        `;
+                    }
+                });
+                document.getElementById('importPreviewModal').style.display = 'flex';
+            } else {
+                alert("CSV файл не містить достатньо даних або має неправильний формат для імпорту.");
+            }
+        }
+
+
+        function previewJSON(jsonData) {
+            try {
+                const data = JSON.parse(jsonData);
+                const previewTableBody = document.getElementById('previewTableBody');
+                previewTableBody.innerHTML = '';
+                importedDataForConfirmation = [];
+
+                if (data.schedule && Array.isArray(data.schedule)) {
+                    if (data.schedule.length > 0 && Array.isArray(data.schedule[0]) && data.schedule[0].length >= 5) {
+                        data.schedule.forEach(rowData => {
+                            importedDataForConfirmation.push(rowData);
+                            const tr = previewTableBody.insertRow();
+                            tr.innerHTML = `
+                                <td>${rowData[0] || ''}</td>
+                                <td>${rowData[1] || ''}</td>
+                                <td>${rowData[2] || ''}</td>
+                                <td>${rowData[3] || ''}</td>
+                                <td>${rowData[4] || ''}</td>
+                            `;
+                        });
+                        document.getElementById('importPreviewModal').style.display = 'flex';
+                    } else {
+                        alert("JSON файл не містить розкладу або має неправильний формат.");
+                    }
+                } else {
+                    alert("JSON файл не містить розкладу у правильному форматі.");
+                }
+            } catch (e) {
+                alert("Помилка обробки JSON файлу: " + e.message);
+                console.error("Помилка парсингу JSON:", e);
+            }
+        }
+
+        function previewXLSXFile(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const binaryString = e.target.result;
+                const workbook = XLSX.read(binaryString, { type: 'binary' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+
+                const previewTableBody = document.getElementById('previewTableBody');
+                previewTableBody.innerHTML = '';
+                importedDataForConfirmation = [];
+
+                if (jsonData.length > 0 && jsonData[0].length >= 5) {
+                    jsonData.forEach(rowData => {
+                        if (rowData.length >= 5) {
+                            importedDataForConfirmation.push(rowData);
+                            const tr = previewTableBody.insertRow();
+                            tr.innerHTML = `
+                                <td>${rowData[0] || ''}</td>
+                                <td>${rowData[1] || ''}</td>
+                                <td>${rowData[2] || ''}</td>
+                                <td>${rowData[3] || ''}</td>
+                                <td>${rowData[4] || ''}</td>
+                            `;
+                        }
+                    });
+                    document.getElementById('importPreviewModal').style.display = 'flex';
+                } else {
+                    alert("Файл Excel не містить достатньо даних або має неправильний формат для імпорту.");
+                }
+
+            };
+            reader.readAsBinaryString(file);
+        }
+
+
+        function confirmImportData() {
+            if (importedDataForConfirmation) {
+                const lessonTable = document.getElementById('lessonTable');
+                lessonTable.innerHTML = '';
+                importedDataForConfirmation.forEach(rowData => {
+                    const tr = lessonTable.insertRow();
+                    tr.innerHTML = `
+                        <td><input type="text" class="form-control" value="${rowData[0] || ''}" /></td>
+                        <td><input type="time" class="form-control time-input" value="${rowData[1] || ''}" /></td>
+                        <td><input type="time" class="form-control time-input" value="${rowData[2] || ''}" /></td>
+                        <td><input type="time" class="form-control time-input" value="${rowData[3] || ''}" /></td>
+                        <td><input type="time" class="form-control time-input" value="${rowData[4] || ''}" /></td>
+                        <td class="action-cell">
+                            <button class="btn btn-danger" style="background-color: #dc3545; border-color: #dc3545;"
+                                    onclick="deleteLessonRow(this)">
+                              <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    `;
+                    attachInputEventsToRow(tr);
+                });
+                document.getElementById('importPreviewModal').style.display = 'none';
+                importedDataForConfirmation = null;
+                saveSchedule(false);
+            }
+        }
+
+        function cancelImportPreview() {
+            document.getElementById('importPreviewModal').style.display = 'none';
+            importedDataForConfirmation = null;
+        }
+
+        function exportData(format) {
+            const headers = {
+                lessonName: document.getElementById("headerLesson").value,
+                pair1:      document.getElementById("headerPair1").value,
+                break1:     document.getElementById("headerBreak1").value,
+                pair2:      document.getElementById("headerPair2").value,
+                break2:     document.getElementById("headerBreak2").value,
+            };
+            const lessonTable = document.getElementById("lessonTable");
+            const schedule = Array.from(lessonTable.rows).map(tr => {
+                const tds = Array.from(tr.cells).slice(0, 5);
+                return tds.map(td => td.children[0].value);
+            });
+
+            const data = {
+                headers: headers,
+                schedule: schedule
+            };
+
+            if (format === 'json') {
+                const jsonContent = JSON.stringify(data, null, 2);
+                downloadFile(jsonContent, 'schedule.json', 'application/json');
+            } else if (format === 'txt') {
+                let txtContent = `# Розклад занять\n\nЗаголовки:\n`;
+                for (const key in headers) {
+                    txtContent += `${key}: ${headers[key]}\n`;
+                }
+                txtContent += `\nРозклад уроків:\n`;
+                schedule.forEach(row => {
+                    txtContent += row.join('\t') + '\n';
+                });
+                downloadFile(txtContent, 'schedule.txt', 'text/plain');
+            } else if (format === 'xlsx') {
+                exportToExcel(data);
+            }
+        }
+
+        function exportToExcel(data) {
+            const workbook = XLSX.utils.book_new();
+            const worksheetData = [
+                [data.headers.lessonName, data.headers.pair1, data.headers.break1, data.headers.pair2, data.headers.break2],
+                ...data.schedule
+            ];
+            const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Розклад занять');
+
+            const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+            const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8' });
+            downloadFile(blob, 'schedule.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8');
+        }
+
+
+        function downloadFile(content, filename, contentType) {
+            const a = document.createElement('a');
+            const file = new Blob([content], {type: contentType});
+            a.href= URL.createObjectURL(file);
+            a.download = filename;
+            a.click();
+        }
+
+        function openEmailModal() {
+            document.getElementById('emailModal').style.display = 'flex';
+        }
+
+        function closeEmailModal() {
+            document.getElementById('emailModal').style.display = 'none';
+        }
+
+        function sendEmail() {
+            const senderEmail = document.getElementById('senderEmail').value;
+            const smtpLogin = document.getElementById('smtpLogin').value;
+            const senderPassword = document.getElementById('senderPassword').value;
+            const smtpServer = document.getElementById('smtpServer').value;
+            const smtpPort = document.getElementById('smtpPort').value;
+            const recipients = document.getElementById('emailRecipients').value;
+            const subject = document.getElementById('emailSubject').value;
+            const body = document.getElementById('emailBody').value;
+
+            if (!senderEmail || !smtpLogin || !senderPassword || !smtpServer || !smtpPort || !recipients || !subject || !body) {
+                alert("Будь ласка, заповніть ВСІ поля для розсилки електронної пошти.");
+                return;
+            }
+
+            const portNumber = parseInt(smtpPort, 10);
+            if (isNaN(portNumber) || portNumber <= 0) {
+                 alert("Будь ласка, введіть коректний номер порту SMTP (позитивне число).");
+                 return;
+            }
+
+
+            if (typeof eel !== 'undefined' && eel.send_emails) {
+                eel.send_emails(
+                    senderEmail,
+                    smtpLogin,
+                    senderPassword,
+                    smtpServer,
+                    portNumber,
+                    recipients,
+                    subject,
+                    body
+                )(function(response){
+                    if (response && response.success) {
+                        alert("Повідомлення успішно відправлено!");
+                        closeEmailModal();
+                    } else {
+                        alert(`Помилка відправлення: ${response ? response.error : 'Невідома помилка'}`);
+                        console.error("Помилка відправлення email:", response ? response.error : 'Невідома помилка');
+                    }
+                });
+            } else {
+                alert("Функціонал розсилки пошти наразі недоступний (Eel не підключено або функція send_emails не доступна).");
+                console.error("eel.send_emails function is not available. Backend integration is needed.");
+            }
+        }
+
+
+    </script>
+</body>
+</html>
